@@ -1,4 +1,4 @@
-# 📸 焦段使用分析工具 (Focal Length Analyzer)
+# 📸 Focal Length Analyzer
 
 一个基于 Python 开发的图像分析工具，用于自动统计摄影师在不同焦段下的拍摄习惯。通过分析图片 EXIF 数据，生成可视化的焦段使用报告，帮助摄影师了解自己的拍摄偏好并为镜头升级提供数据支持。
 
@@ -127,6 +127,7 @@ def _define_focal_groups(self):
 ## 🤝 贡献
 
 欢迎提交 Issue 和 Pull Request！
+源代码：`@Pos2333` & deepseek
 
 ## 📄 许可证
 
@@ -139,6 +140,5 @@ def _define_focal_groups(self):
 - 可根据个人需求调整焦段分组范围
 
 ---
-
 **让数据指导你的摄影装备升级决策！** 📷✨
 ```
