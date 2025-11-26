@@ -55,14 +55,14 @@ class FocalLengthAnalyzer:
             '超广角(14-19mm)': (14, 19),
             '超广角(20-23mm)':(20,23),
             '广角 (24-28mm)': (24, 28),
-            '标准广角 (35mm)': (30, 40),
-            '标准 (50mm)': (45, 58),
-            '人像 (85mm)': (75, 90),
-            '中长焦 (100-135mm)': (95, 140),
+            '标准广角 (35mm)': (29, 40),
+            '标准 (50mm)': (41, 65),
+            '人像 (85mm)': (66, 95),
+            '中长焦 (100-135mm)': (95, 149),
             '长焦 (200mm)': (150, 250),
-            '超长焦 (300mm)': (280, 350),
-            '超长焦 (400mm)': (380, 450),
-            '超长焦 (500-600mm)': (480, 650),
+            '超长焦 (300mm)': (251, 349),
+            '超长焦 (400mm)': (350, 449),
+            '超长焦 (500-600mm)': (450, 649),
             '超长焦 (600mm+)': (650, 2000)
         }
     
@@ -114,7 +114,7 @@ class FocalLengthAnalyzer:
         crop_factor = self.get_camera_crop_factor(camera_model)
         equivalent_focal = focal_length * crop_factor
 
-        return round(equivalent_focal, 1)
+        return float(round(equivalent_focal, 1))
     
     #将焦段分配到对应的分组
     def group_focal_length(self, focal_length):
@@ -163,7 +163,7 @@ class FocalLengthAnalyzer:
         crop_factors = {'1': 1.0, '2': 1.5, '3': 1.6, '4': 2.0, '5': 2.7}
         crop_factor = crop_factors.get(sensor_choice, 1.0)
         
-        equivalent_focal = focal_length * crop_factor
+        equivalent_focal = float(focal_length * crop_factor)
 
             # 保存用户输入
         self.missing_exif_data[filename] = {
@@ -273,20 +273,47 @@ class FocalLengthAnalyzer:
         
         ax1.set_title('焦段使用分布（分组）', fontsize=14, fontweight='bold')
         
-        # 具体焦段柱状图
-        focal_counts = df['equivalent_focal'].value_counts().head(15)  # 显示前15个最常用焦段
-        bars = ax2.bar(range(len(focal_counts)), focal_counts.values, color='skyblue', alpha=0.7)
+        # 具体焦段柱状图 - 按焦段从小到大排序
+        focal_counts = df['equivalent_focal'].value_counts()
+        # 按焦段数值从小到大排序
+        focal_counts_sorted = focal_counts.sort_index()
+
+        # 显示所有焦段，不限制数量
+        print(f"总共 {len(focal_counts_sorted)} 个不同焦段")
+
+        bars = ax2.bar(range(len(focal_counts_sorted)), focal_counts_sorted.values, color='skyblue', alpha=0.7)
         ax2.set_xlabel('等效焦段 (mm)')
         ax2.set_ylabel('使用次数')
-        ax2.set_title('最常用焦段排名', fontsize=14, fontweight='bold')
-        ax2.set_xticks(range(len(focal_counts)))
-        ax2.set_xticklabels([f"{focal}mm" for focal in focal_counts.index], rotation=45)
-        
-        # 在柱状图上显示数值
-        for bar, count in zip(bars, focal_counts.values):
-            height = bar.get_height()
-            ax2.text(bar.get_x() + bar.get_width()/2., height,
-                    f'{count}', ha='center', va='bottom')
+        ax2.set_title('焦段使用分布', fontsize=14, fontweight='bold')
+        ax2.set_xticks(range(len(focal_counts_sorted)))
+
+        # 根据焦段数量调整X轴标签显示
+        if len(focal_counts_sorted) > 20:
+            # 焦段较多时，每隔n个显示一个标签，避免重叠
+            step = max(1, len(focal_counts_sorted) // 20)  # 动态计算间隔
+            ax2.set_xticks(range(0, len(focal_counts_sorted), step))
+            ax2.set_xticklabels([f"{float(focal):.1f}mm" for focal in focal_counts_sorted.index[::step]], rotation=45)
+        else:
+            # 焦段较少时，显示所有标签
+            ax2.set_xticklabels([f"{float(focal):.1f}mm" for focal in focal_counts_sorted.index], rotation=45)
+
+        # 在柱状图上显示数值（根据密集程度调整）
+        if len(focal_counts_sorted) <= 40:
+            # 焦段数量适中时显示所有数值
+            for bar, count in zip(bars, focal_counts_sorted.values):
+                height = bar.get_height()
+                if count > 0:  # 只在有使用次数的柱子上显示
+                    ax2.text(bar.get_x() + bar.get_width()/2., height + 0.1,
+                            f'{count}', ha='center', va='bottom', fontsize=7)
+        else:
+            # 焦段非常多时，只在使用次数较多的柱子上显示数值
+            max_count = max(focal_counts_sorted.values)
+            for bar, count in zip(bars, focal_counts_sorted.values):
+                height = bar.get_height()
+                # 只在使用次数超过最大值5%的柱子上显示数字
+                if count > max_count * 0.05 and count > 0:
+                    ax2.text(bar.get_x() + bar.get_width()/2., height + 0.1,
+                            f'{count}', ha='center', va='bottom', fontsize=6)
         
         plt.tight_layout()
         plt.savefig(os.path.join(FocalLengthAnalyzer.output_dir, 'focal_length_analysis.png'), dpi=300, bbox_inches='tight')
@@ -315,12 +342,14 @@ class FocalLengthAnalyzer:
             percentage = (count / stats['total_images']) * 100
             print(f"{group:<20} {count:>4}张 ({percentage:>5.1f}%)")
         
-        print("\n最常用具体焦段 (前10):")
+        print("\n所有具体焦段使用情况:")
         print("-" * 30)
-        top_focals = focal_stats.head(10)
-        for focal, count in top_focals.items():
+        all_focals = focal_stats.sort_index()  # 按焦段从小到大排序
+        for focal, count in all_focals.items():
+            # 确保focal是数值类型
+            focal_float = float(focal)  # 转换为浮点数
             percentage = (count / stats['total_images']) * 100
-            print(f"{focal:>5}mm {count:>4}张 ({percentage:>5.1f}%)")
+            print(f"{focal_float:>5.1f}mm {count:>4}张 ({percentage:>5.1f}%)")
         
         # 给出升级建议
         most_used_group = group_stats.index[0]
