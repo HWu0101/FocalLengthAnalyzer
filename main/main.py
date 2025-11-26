@@ -155,7 +155,7 @@ class FocalLengthAnalyzer:
         print("请选择传感器尺寸:")
         print("1. 全画幅 (裁切系数 1.0)")
         print("2. APS-C (裁切系数 1.5)")
-        print("3. APS-C (裁切系数 1.6 - 佳能)")
+        print("3. Canon APS-C (裁切系数 1.6)")
         print("4. M43 (裁切系数 2.0)")
         print("5. 1英寸 (裁切系数 2.7)")
         
@@ -342,9 +342,14 @@ def main():
     # 创建分析器并执行分析
     analyzer = FocalLengthAnalyzer(input_folder)
     focal_data = analyzer.analyze_folder()
+
+    print("\n" + "="*50)
+    print("       FocalLengthAnalyzer Beta 1.0")
+    print("="*50)
     
     if not focal_data:
         print("没有找到可分析的图片文件")
+        input("\n程序执行完毕，按回车键退出...")
         return
     
     # 生成统计结果
@@ -353,6 +358,8 @@ def main():
     # 显示结果
     analyzer.print_statistics(stats)
     analyzer.visualize_results(stats)
+
+    input("\n程序执行完毕，按回车键退出...")
 
 if __name__ == "__main__":
     main()
